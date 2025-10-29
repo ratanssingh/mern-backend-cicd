@@ -1,0 +1,41 @@
+name: Development Build
+
+on:
+  push:
+    branches-ignore: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Run tests
+      run: npm test
+    
+    - name: Build Docker image (no push)
+      run: |
+        docker build -t mern-backend-ci:dev .
+        echo "✅ Docker image built successfully for development"
+    
+    - name: Test Docker container
+      run: |
+        docker run -d -p 3000:3000 --name test-container mern-backend-ci:dev
+        sleep 5
+        curl -f http://localhost:3000/health || exit 1
+        docker stop test-container
+        docker rm test-container
+        echo "✅ Container health check passed"
